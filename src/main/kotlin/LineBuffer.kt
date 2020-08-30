@@ -1,3 +1,5 @@
+import java.lang.StringBuilder
+
 // provides standard interface for both file streams and in-memory buffers
 
 interface LineBuffer {
@@ -12,6 +14,7 @@ interface LineBuffer {
 
 // for macros read in from a file or generated during execution
 class LocalBuffer: LineBuffer {
+    // TODO back with deque instead of list
     val lines: List<String>
     var pos: Int = 0
     constructor(lines: List<String>) {
@@ -33,9 +36,12 @@ class LocalBuffer: LineBuffer {
         TODO("Not yet implemented")
     }
 
+    // is this even necessary? can we get away without it?
     override fun appendLine(line: String) {
         TODO("Not yet implemented")
     }
+
+    override fun toString(): String = lines.joinToString(separator = "\n")
 
     override val eof: Boolean
         get() = (pos >= lines.size)

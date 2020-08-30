@@ -16,7 +16,8 @@ fun main(args: Array<String>) {
         scope[it.name.replace(".st", "")] = it.useLines { LocalBuffer(it.toList()) }
     }
 
-    eval(scope["main"] ?: error("Entry point file main.st not found."), LocalBuffer())
+    val result = eval(scope["main"] ?: error("Entry point file main.st not found."), LocalBuffer())
+    println(result.toString())
 }
 
 // eval entire macro
@@ -24,10 +25,10 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
     // set buffers to their initial defaults
     var input: LineBuffer = initialInput
     var self: LineBuffer = initialSelf
+    var output: LineBuffer = LocalBuffer()
 
     // evaluate a single line (effectively an expression)
     fun evalLine(line: String): LineBuffer {
-        println(line)
         val (macro, param) = line.split(" ", limit = 2)
 
         // see if macro exists in scope
@@ -37,6 +38,26 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
         } else {
             // see if macro exists as a built-in command
             when (macro) {
+                ("+") -> {
+                    val (a, b) = param.split(" ", limit=2)
+                    LocalBuffer((a.toDouble() + b.toDouble()).toString())
+                }
+                ("-") -> {
+                    val (a, b) = param.split(" ", limit=2)
+                    LocalBuffer((a.toDouble() - b.toDouble()).toString())
+                }
+                ("*") -> {
+                    val (a, b) = param.split(" ", limit=2)
+                    LocalBuffer((a.toDouble() * b.toDouble()).toString())
+                }
+                ("/") -> {
+                    val (a, b) = param.split(" ", limit=2)
+                    LocalBuffer((a.toDouble() / b.toDouble()).toString())
+                }
+                ("%") -> {
+                    val (a, b) = param.split(" ", limit=2)
+                    LocalBuffer((a.toDouble() % b.toDouble()).toString())
+                }
                 else -> {
                     error("Invalid macro: $macro")
                 }
@@ -45,7 +66,7 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
     }
 
     while (!self.eof) {
-        evalLine(self.readLine())
+        output.appendLine(evalLine(self.readLine()).toString())
     }
 
     return LocalBuffer();
