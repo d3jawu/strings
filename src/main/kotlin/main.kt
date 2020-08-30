@@ -4,12 +4,10 @@ val scope: MutableMap<String, LineBuffer> = HashMap();
 
 fun main(args: Array<String>) {
     val dir = (if (args.size == 1) {
-        println(args[0])
         args[0]
     } else {
         "."
     })
-
 
     // load all local .st files into scope
     File(dir).walk().filter { it.toString().endsWith(".st") }.forEach { it ->
@@ -17,6 +15,7 @@ fun main(args: Array<String>) {
     }
 
     val result = eval(scope["main"] ?: error("Entry point file main.st not found."), LocalBuffer())
+    println("result:")
     println(result.toString())
 }
 
@@ -28,35 +27,67 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
     var output: LineBuffer = LocalBuffer()
 
     // evaluate a single line (effectively an expression)
-    fun evalLine(line: String): LineBuffer {
+    fun evalLine(line: String): String {
         val (macro, param) = line.split(" ", limit = 2)
 
         // see if macro exists in scope
         return if (scope.containsKey(macro)) {
             // eval that macro with parameter as input
-            eval(scope[macro] ?: error("Invalid macro: $macro"), LocalBuffer(param))
+            eval(scope[macro] ?: error("Invalid macro: $macro"), LocalBuffer(param)).toString()
         } else {
             // see if macro exists as a built-in command
             when (macro) {
+                (">>") -> {
+                    output.prependLine(param)
+                    ""
+                }
+                (">>>") -> {
+                    output.appendLine(param)
+                    ""
+                }
+                ("<<") -> input.readLine()
+                ("->") -> {
+                    if (scope[param] != null) {
+
+                    } else {
+                        TODO("make this into a reusable helper function")
+                        input = when (param) {
+                            ("stdin") -> {
+                                TODO()
+                                LocalBuffer()
+                            }
+                            ("stdout") -> {
+                                TODO()
+                                LocalBuffer()
+                            }
+                            else -> {
+                                val newBuf = LocalBuffer()
+                                scope[param] = newBuf
+                                newBuf
+                            }
+                        }
+                    }
+                    ""
+                }
                 ("+") -> {
-                    val (a, b) = param.split(" ", limit=2)
-                    LocalBuffer((a.toDouble() + b.toDouble()).toString())
+                    val (a, b) = param.split(" ", limit = 2)
+                    (a.toDouble() + b.toDouble()).toString()
                 }
                 ("-") -> {
-                    val (a, b) = param.split(" ", limit=2)
-                    LocalBuffer((a.toDouble() - b.toDouble()).toString())
+                    val (a, b) = param.split(" ", limit = 2)
+                    (a.toDouble() - b.toDouble()).toString()
                 }
                 ("*") -> {
-                    val (a, b) = param.split(" ", limit=2)
-                    LocalBuffer((a.toDouble() * b.toDouble()).toString())
+                    val (a, b) = param.split(" ", limit = 2)
+                    (a.toDouble() * b.toDouble()).toString()
                 }
                 ("/") -> {
-                    val (a, b) = param.split(" ", limit=2)
-                    LocalBuffer((a.toDouble() / b.toDouble()).toString())
+                    val (a, b) = param.split(" ", limit = 2)
+                    (a.toDouble() / b.toDouble()).toString()
                 }
                 ("%") -> {
-                    val (a, b) = param.split(" ", limit=2)
-                    LocalBuffer((a.toDouble() % b.toDouble()).toString())
+                    val (a, b) = param.split(" ", limit = 2)
+                    (a.toDouble() % b.toDouble()).toString()
                 }
                 else -> {
                     error("Invalid macro: $macro")
@@ -66,8 +97,9 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
     }
 
     while (!self.eof) {
-        output.appendLine(evalLine(self.readLine()).toString())
+        TODO("Lookahead for indented parameter expressions")
+        output.appendLine(evalLine(self.readLine()))
     }
 
-    return LocalBuffer();
+    return output
 }
