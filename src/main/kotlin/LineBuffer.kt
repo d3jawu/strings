@@ -2,7 +2,10 @@
 
 interface LineBuffer {
     // consume the next line from the buffer
-    fun readLine(): String
+    fun readLine(): String?
+
+    // read next line without consuming it
+    fun peekLine(): String?
 
     // places given line in the next slot in the buffer
     fun prependLine(line: String)
@@ -30,7 +33,8 @@ class LocalBuffer : LineBuffer {
         }
     }
 
-    override fun readLine(): String = lines.removeFirst()
+    override fun readLine(): String? = lines.removeFirstOrNull()
+    override fun peekLine(): String? = lines.firstOrNull()
 
     override fun prependLine(line: String) = lines.addFirst(line)
     override fun appendLine(line: String) = lines.addLast(line)

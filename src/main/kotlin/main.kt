@@ -26,12 +26,13 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
     var self: LineBuffer = initialSelf
     var output: LineBuffer = LocalBuffer()
 
-    // evaluate a single line (effectively an expression)
-    fun evalLine(line: String): String {
+    while (!self.eof) {
+        // TODO Lookahead for indented parameter expressions
+        val line = self.readLine() ?: error("Tried to read from an empty buffer.")
         val (macro, param) = line.split(" ", limit = 2)
 
         // see if macro exists in scope
-        return if (scope.containsKey(macro)) {
+        val result = if (scope.containsKey(macro)) {
             // eval that macro with parameter as input
             eval(scope[macro] ?: error("Invalid macro: $macro"), LocalBuffer(param)).toString()
         } else {
@@ -48,16 +49,15 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
                 ("<<") -> input.readLine()
                 ("->") -> {
                     if (scope[param] != null) {
-
+                        output = scope[param]!!
                     } else {
-                        TODO("make this into a reusable helper function")
                         input = when (param) {
                             ("stdin") -> {
-                                TODO()
+                                // TODO
                                 LocalBuffer()
                             }
                             ("stdout") -> {
-                                TODO()
+                                // TODO
                                 LocalBuffer()
                             }
                             else -> {
@@ -94,11 +94,6 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
                 }
             }
         }
-    }
-
-    while (!self.eof) {
-        TODO("Lookahead for indented parameter expressions")
-        output.appendLine(evalLine(self.readLine()))
     }
 
     return output
