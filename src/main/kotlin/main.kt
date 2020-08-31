@@ -28,12 +28,26 @@ fun String.indentLevel(): Int {
     return t
 }
 
+// remove ".0" from whole number doubles
+fun String.trimTrailingDecimal(): String =
+        if (this.endsWith(".0")) {
+            this.replace(".0", "")
+        } else {
+            this
+        }
+
+
 // eval entire macro
 fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
     // set buffers to their initial defaults
     var input: LineBuffer = initialInput
     var self: LineBuffer = initialSelf
     var output: LineBuffer = LocalBuffer()
+    println("Beginning eval.")
+    println(input.toString())
+    println(self.toString())
+    println(output.toString())
+    println("---")
 
     while (!self.eof) {
         val line = self.readLine() ?: error("Tried to read from an empty buffer.")
@@ -68,7 +82,7 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
 
         // local evaluation
         // see if macro exists in scope
-        val result = if (scope.containsKey(macro)) {
+        if (scope.containsKey(macro)) {
             // eval that macro with parameter as input
             eval(scope[macro]!!, LocalBuffer(param)).toString()
         } else {
@@ -76,11 +90,9 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
             when (macro) {
                 (">>") -> {
                     output.prependLine(param)
-                    ""
                 }
                 (">>>") -> {
                     output.appendLine(param)
-                    ""
                 }
                 ("<<") -> input.readLine()
                 ("->") -> {
@@ -103,35 +115,26 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
                             }
                         }
                     }
-                    ""
                 }
-                ("+") -> {
+                "+", "-", "*", "/", "%" -> {
                     val (a, b) = param.split(" ", limit = 2)
-                    (a.toDouble() + b.toDouble()).toString()
-                }
-                ("-") -> {
-                    val (a, b) = param.split(" ", limit = 2)
-                    (a.toDouble() - b.toDouble()).toString()
-                }
-                ("*") -> {
-                    val (a, b) = param.split(" ", limit = 2)
-                    (a.toDouble() * b.toDouble()).toString()
-                }
-                ("/") -> {
-                    val (a, b) = param.split(" ", limit = 2)
-                    (a.toDouble() / b.toDouble()).toString()
-                }
-                ("%") -> {
-                    val (a, b) = param.split(" ", limit = 2)
-                    (a.toDouble() % b.toDouble()).toString()
+
+                    val res = when(macro) {
+                        "+" -> (a.toDouble() + b.toDouble())
+                        "-" -> (a.toDouble() - b.toDouble())
+                        "*" -> (a.toDouble() * b.toDouble())
+                        "/" -> (a.toDouble() / b.toDouble())
+                        "%" -> (a.toDouble() % b.toDouble())
+                        else -> error("What?")
+                    }
+
+                    output.appendLine(res.toString().trimTrailingDecimal())
                 }
                 else -> {
                     error("Invalid macro: $macro")
                 }
             }
         }
-
-        output.appendLine(result ?: error(""))
     }
 
     return output
