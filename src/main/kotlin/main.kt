@@ -36,65 +36,52 @@ fun String.trimTrailingDecimal(): String =
             this
         }
 
+// removes ALL leading indents to string
+fun String.trimLeadingIndents(): String = if (this.startsWith("\t")) {
+    this.removePrefix("\t").trimLeadingIndents()
+} else {
+    this
+}
 
 // eval entire macro
-fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
+fun eval(initialSelf: LineBuffer, initialInput: LineBuffer, indentLevel: Int = 0): LineBuffer {
     // set buffers to their initial defaults
     var input: LineBuffer = initialInput
     var self: LineBuffer = initialSelf
     var output: LineBuffer = LocalBuffer()
     println("Beginning eval.")
-    println(input.toString())
-    println(self.toString())
-    println(output.toString())
+    println("Input: '${input}'")
+    println("Self: '${self}'")
+    println("Level: $indentLevel")
     println("---")
 
-    while (!self.eof) {
-        val line = self.readLine() ?: error("Tried to read from an empty buffer.")
+    // eval a single line in-place that has a literal param
+    fun evalLineWithLiteral(line: String): String {
+        println("eval'ing line with literal: '$line'")
         val command = line.split(" ", limit = 2)
-        val macro = command[0].replace("\t", "")
-
-        // Lookahead for indented parameter expressions
-        val param = if (command.size > 1) {
-            command[1]
-        } else {
-            val currentIndent = line.indentLevel()
-            val sb = StringBuilder()
-
-            var line = self.peekLine() ?: error("Unexpected eof")
-            while (line.indentLevel() == currentIndent + 1) {
-                // continue to use same self and input buffers
-                sb.append(eval(self, input)
-                        .toString()
-                        .replace("\n", " ")
-                        .replace("\t", "")
-                )
-                sb.append(" ")
-                // consume line that was just read
-                self.readLine()
-
-                // load next line
-                line = self.peekLine() ?: break
-            }
-
-            sb.toString()
-        }
-
+        val macro = command[0].trimLeadingIndents()
+        val param = command[1]
         // local evaluation
         // see if macro exists in scope
-        if (scope.containsKey(macro)) {
+        return if (scope.containsKey(macro)) {
             // eval that macro with parameter as input
-            eval(scope[macro]!!, LocalBuffer(param)).toString()
+            eval(scope[macro]!!, LocalBuffer(param), 0).toString()
         } else {
             // see if macro exists as a built-in command
             when (macro) {
                 (">>") -> {
                     output.prependLine(param)
+                    ""
                 }
                 (">>>") -> {
                     output.appendLine(param)
+                    ""
                 }
-                ("<<") -> input.readLine()
+                ("<<") -> {
+                    val res = input.readLine() ?: error("Tried to read empty input buffer.")
+                    println("Input read line: '$res'")
+                    res
+                }
                 ("->") -> {
                     if (scope[param] != null) {
                         output = scope[param]!!
@@ -115,11 +102,12 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
                             }
                         }
                     }
+                    ""
                 }
                 "+", "-", "*", "/", "%" -> {
                     val (a, b) = param.split(" ", limit = 2)
 
-                    val res = when(macro) {
+                    val res = when (macro) {
                         "+" -> (a.toDouble() + b.toDouble())
                         "-" -> (a.toDouble() - b.toDouble())
                         "*" -> (a.toDouble() * b.toDouble())
@@ -128,14 +116,46 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
                         else -> error("What?")
                     }
 
-                    output.appendLine(res.toString().trimTrailingDecimal())
+                    res.toString().trimTrailingDecimal()
                 }
                 else -> {
-                    error("Invalid macro: $macro")
+                    error("Invalid macro: '$macro'")
                 }
             }
         }
     }
 
+    while (!self.eof) {
+        val line = self.readLine() ?: error("Tried to read from an empty buffer.")
+        println("line: '$line'")
+        val command = line.split(" ", limit = 2)
+
+        // Lookahead for indented parameter expressions
+        val res = if (command.size > 1) {
+            evalLineWithLiteral(line)
+        } else {
+            println("Using tabbed composition")
+            val sb = StringBuilder(line)
+
+            var line = self.peekLine() ?: error("Unexpected eof")
+            while (line.indentLevel() == indentLevel + 1) {
+                println("tabbed line: '$line'")
+                // continue to use same self and input buffers (?)
+                val res = eval(self, input)
+                        .toString()
+                        .replace("\n", " ")
+                        .replace("\t", "")
+                sb.append(" ")
+                sb.append(res)
+
+                // load next line
+                line = self.peekLine() ?: break
+            }
+        }
+        println("Result after evalLineWithLiteral: '$res'")
+        println("Output after evalLineWithLiteral: '$output'")
+    }
+
+    println("eval output: '$output'")
     return output
 }
