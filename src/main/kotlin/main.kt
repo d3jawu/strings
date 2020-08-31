@@ -1,6 +1,7 @@
 import java.io.File
+import java.lang.StringBuilder
 
-val scope: MutableMap<String, LineBuffer> = HashMap();
+val scope: MutableMap<String, LineBuffer> = HashMap()
 
 fun main(args: Array<String>) {
     val dir = (if (args.size == 1) {
@@ -15,8 +16,16 @@ fun main(args: Array<String>) {
     }
 
     val result = eval(scope["main"] ?: error("Entry point file main.st not found."), LocalBuffer())
-    println("result:")
     println(result.toString())
+}
+
+fun String.indentLevel(): Int {
+    var t = 0
+    while (this[t] == '\t') {
+        t += 1
+    }
+
+    return t
 }
 
 // eval entire macro
@@ -27,14 +36,41 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
     var output: LineBuffer = LocalBuffer()
 
     while (!self.eof) {
-        // TODO Lookahead for indented parameter expressions
         val line = self.readLine() ?: error("Tried to read from an empty buffer.")
-        val (macro, param) = line.split(" ", limit = 2)
+        val command = line.split(" ", limit = 2)
+        val macro = command[0].replace("\t", "")
 
+        // Lookahead for indented parameter expressions
+        val param = if (command.size > 1) {
+            command[1]
+        } else {
+            val currentIndent = line.indentLevel()
+            val sb = StringBuilder()
+
+            var line = self.peekLine() ?: error("Unexpected eof")
+            while (line.indentLevel() == currentIndent + 1) {
+                // continue to use same self and input buffers
+                sb.append(eval(self, input)
+                        .toString()
+                        .replace("\n", " ")
+                        .replace("\t", "")
+                )
+                sb.append(" ")
+                // consume line that was just read
+                self.readLine()
+
+                // load next line
+                line = self.peekLine() ?: break
+            }
+
+            sb.toString()
+        }
+
+        // local evaluation
         // see if macro exists in scope
         val result = if (scope.containsKey(macro)) {
             // eval that macro with parameter as input
-            eval(scope[macro] ?: error("Invalid macro: $macro"), LocalBuffer(param)).toString()
+            eval(scope[macro]!!, LocalBuffer(param)).toString()
         } else {
             // see if macro exists as a built-in command
             when (macro) {
@@ -94,6 +130,8 @@ fun eval(initialSelf: LineBuffer, initialInput: LineBuffer): LineBuffer {
                 }
             }
         }
+
+        output.appendLine(result ?: error(""))
     }
 
     return output
