@@ -4,8 +4,12 @@ interface Buffer {
     // consume until delimiter is met; delimiter is consumed and discarded
     fun readTo(delimiter: CharSequence): CharSequence
 
+    fun readAll(): CharSequence
+
     // read next line without consuming it
     fun peekTo(delimiter: CharSequence): CharSequence
+
+    fun peekAll(): CharSequence = this.toString()
 
     // places string at the beginning of the buffer (right in front of the PC)
     fun prepend(str: CharSequence)
@@ -18,10 +22,6 @@ interface Buffer {
 // for macros read in from a file or generated during execution
 class LocalBuffer : Buffer {
     private var content: CharSequence
-
-    constructor(buffer: LocalBuffer) {
-        this.content = buffer.toString()
-    }
 
     constructor(lines: List<CharSequence>) {
         this.content = lines.joinToString(separator = "\n")
@@ -50,20 +50,16 @@ class LocalBuffer : Buffer {
         }
     }
 
+    override fun readAll(): CharSequence {
+        val orig = content
+        content = ""
+        return orig
+    }
+
     override fun peekTo(delimiter: CharSequence): CharSequence {
         val split = this.content.split(delimiter.toString(), limit = 2)
-        return when (split.size) {
-            1 -> {
-                // delimiter not found, send whole string
-                split[0]
-            }
-            2 -> {
-                split[0]
-            }
-            else -> {
-                error("What?")
-            }
-        }
+        // in either case, the first element contains what we want
+        return split[0]
     }
 
     override fun prepend(str: CharSequence) {
@@ -78,6 +74,25 @@ class LocalBuffer : Buffer {
 
     override val eof: Boolean
         get() = (content.isEmpty())
+}
+
+// is always empty and discards all input, like /dev/null
+class NullBuffer : Buffer {
+    override fun readTo(delimiter: CharSequence): CharSequence = ""
+
+    override fun readAll(): CharSequence = ""
+
+    override fun peekTo(delimiter: CharSequence): CharSequence = ""
+
+    override fun prepend(str: CharSequence) = Unit
+
+    override fun append(str: CharSequence) = Unit
+
+    override fun toString(): String = ""
+
+    override val eof: Boolean
+        get() = true
+
 }
 
 // for input from stdin

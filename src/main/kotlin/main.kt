@@ -1,7 +1,7 @@
 import java.io.File
 import java.lang.StringBuilder
 
-val scope: MutableMap<String, Buffer> = HashMap()
+val scope: MutableMap<CharSequence, Buffer> = HashMap()
 
 fun main(args: Array<String>) {
     val dir = (if (args.size == 1) {
@@ -45,12 +45,52 @@ fun String.trimLeadingIndents(): String = if (this.startsWith("\t")) {
 
 // eval entire macro
 fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
+    val initialOutput = LocalBuffer()
     // set buffers to their initial defaults
     var input = initialInput
     var self = initialSelf
-    var output: Buffer = LocalBuffer()
+    var output: Buffer = initialOutput
+
+    fun getBuffer(name: CharSequence): Buffer {
+        return if (scope[name] != null) {
+            scope[name]!!
+        } else {
+            when (name) {
+                ("in") -> {
+                    initialInput
+                }
+                ("out") -> {
+                    initialOutput
+                }
+                ("self") -> {
+                    initialSelf
+                }
+                ("stdin") -> {
+                    // TODO
+                    LocalBuffer()
+                }
+                ("stdout") -> {
+                    // TODO
+                    LocalBuffer()
+                }
+                ("null") -> {
+                    NullBuffer()
+                }
+                else -> {
+                    val newBuf = LocalBuffer()
+                    scope[name] = newBuf
+                    newBuf
+                }
+            }
+        }
+    }
 
     fun evalLine(line: CharSequence): CharSequence {
+        if(line == "") {
+            // ignore empty line
+            return ""
+        }
+
         val command = line.split(" ", limit = 2)
         val macro = command[0].trimLeadingIndents()
 
@@ -60,23 +100,26 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                 var next = self.peekTo("\n")
                 val currentIndent = line.indentLevel()
                 while(next.indentLevel() == currentIndent + 1) {
-                    sb.append(" ")
-                    sb.append(evalLine(self.readTo("\n")))
+                    val res = evalLine(self.readTo("\n"))
+                    if(res != "") {
+                        sb.append(" ")
+                    }
+                    sb.append(res)
                     next = self.peekTo("\n")
                     if(next.isEmpty()) {
                         break
                     }
                 }
-
                 return evalLine(line.toString() + sb.toString())
             }
             2 -> {
-                val param = command[1]
+                val param = command[1].replace("\\n", "\n")
                 // local evaluation
                 // see if macro exists in scope
                 (if (scope.containsKey(macro)) {
                     // eval that macro with parameter as input
-                    return eval(LocalBuffer(scope[macro]!!.toString()), LocalBuffer(param)).toString()
+                    val res = eval(LocalBuffer(scope[macro]!!.toString()), LocalBuffer(param)).toString()
+                    return res
                 } else {
                     // see if macro exists as a built-in command
                     return when (macro) {
@@ -89,30 +132,31 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                             ""
                         }
                         ("<<") -> {
-                            val res = input.readTo(param).toString()
-                            res
+                            input.readTo(param).toString()
+                        }
+                        ("?<") -> {
+                            input.peekTo(param).toString()
+                        }
+                        ("<<<") -> {
+                            input.readAll().toString()
+                        }
+                        ("?<<") -> {
+                            input.peekAll().toString()
                         }
                         ("->") -> {
-                            if (scope[param] != null) {
-                                output = scope[param]!!
-                            } else {
-                                output = when (param) {
-                                    ("stdin") -> {
-                                        // TODO
-                                        LocalBuffer()
-                                    }
-                                    ("stdout") -> {
-                                        // TODO
-                                        LocalBuffer()
-                                    }
-                                    else -> {
-                                        val newBuf = LocalBuffer()
-                                        scope[param] = newBuf
-                                        newBuf
-                                    }
-                                }
-                            }
+                            output = getBuffer(param)
                             ""
+                        }
+                        ("<-") -> {
+                            input = getBuffer(param)
+                            ""
+                        }
+                        "?" -> {
+                            if(param.startsWith("true")) {
+                                evalLine(param.removePrefix("true "))
+                            } else {
+                                ""
+                            }
                         }
                         "+", "-", "*", "/", "%" -> {
                             val (a, b) = param.split(" ", limit = 2)
