@@ -1,3 +1,3 @@
->>
+>>>
 	greet John
->> done
+>>> done
