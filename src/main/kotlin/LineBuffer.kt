@@ -1,48 +1,83 @@
 // provides standard interface for both file streams and in-memory buffers
 
-interface LineBuffer {
-    // consume the next line from the buffer
-    fun readLine(): String?
+interface Buffer {
+    // consume until delimiter is met; delimiter is consumed and discarded
+    fun readTo(delimiter: CharSequence): CharSequence
 
     // read next line without consuming it
-    fun peekLine(): String?
+    fun peekTo(delimiter: CharSequence): CharSequence
 
-    // places given line in the next slot in the buffer
-    fun prependLine(line: String)
+    // places string at the beginning of the buffer (right in front of the PC)
+    fun prepend(str: CharSequence)
 
-    // places line at end of buffer
-    fun appendLine(line: String)
+    // places string at end of buffer
+    fun append(str: CharSequence)
     val eof: Boolean
 }
 
 // for macros read in from a file or generated during execution
-class LocalBuffer : LineBuffer {
-    // TODO back with deque instead of list
-    val lines: ArrayDeque<String>
+class LocalBuffer : Buffer {
+    private var content: CharSequence
 
-    constructor(lines: List<String>) {
-        this.lines = ArrayDeque(lines)
+    constructor(buffer: LocalBuffer) {
+        this.content = buffer.toString()
+    }
+
+    constructor(lines: List<CharSequence>) {
+        this.content = lines.joinToString(separator = "\n")
     }
 
     // create from raw string input
     constructor(raw: String = "") {
-        lines = if (raw == "") {
-            ArrayDeque() // prevents buffer from being created with empty line
-        } else {
-            ArrayDeque(raw.split('\n'))
+        content = raw
+    }
+
+    override fun readTo(delimiter: CharSequence): CharSequence {
+        val split = this.content.split(delimiter.toString(), limit = 2)
+        return when (split.size) {
+            1 -> {
+                // delimiter not found, consume whole string
+                this.content = ""
+                split[0]
+            }
+            2 -> {
+                this.content = split[1]
+                split[0]
+            }
+            else -> {
+                error("What?")
+            }
         }
     }
 
-    override fun readLine(): String? = lines.removeFirstOrNull()
-    override fun peekLine(): String? = lines.firstOrNull()
+    override fun peekTo(delimiter: CharSequence): CharSequence {
+        val split = this.content.split(delimiter.toString(), limit = 2)
+        return when (split.size) {
+            1 -> {
+                // delimiter not found, send whole string
+                split[0]
+            }
+            2 -> {
+                split[0]
+            }
+            else -> {
+                error("What?")
+            }
+        }
+    }
 
-    override fun prependLine(line: String) = lines.addFirst(line)
-    override fun appendLine(line: String) = lines.addLast(line)
+    override fun prepend(str: CharSequence) {
+        this.content = "$str${this.content}"
+    }
 
-    override fun toString(): String = lines.joinToString(separator = "\n")
+    override fun append(str: CharSequence) {
+        this.content = "${this.content}$str"
+    }
+
+    override fun toString(): String = content.toString()
 
     override val eof: Boolean
-        get() = (lines.size == 0)
+        get() = (content.isEmpty())
 }
 
 // for input from stdin
