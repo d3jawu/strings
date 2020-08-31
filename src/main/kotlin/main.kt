@@ -113,7 +113,11 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                 return evalLine(line.toString() + sb.toString())
             }
             2 -> {
-                val param = command[1].replace("\\n", "\n")
+                // replace escape characters
+                val param = command[1]
+                    .replace("\\n", "\n")
+                    .replace("\\s", " ")
+                    .replace("\\t", "\t")
                 // local evaluation
                 // see if macro exists in scope
                 (if (scope.containsKey(macro)) {
