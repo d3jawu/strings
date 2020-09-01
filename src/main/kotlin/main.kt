@@ -24,17 +24,16 @@ fun CharSequence.indentLevel(): Int {
     while (this[t] == '\t') {
         t += 1
     }
-
     return t
 }
 
 // remove ".0" from whole number doubles
 fun String.trimTrailingDecimal(): String =
-        if (this.endsWith(".0")) {
-            this.replace(".0", "")
-        } else {
-            this
-        }
+    if (this.endsWith(".0")) {
+        this.replace(".0", "")
+    } else {
+        this
+    }
 
 // removes ALL leading indents to string
 fun String.trimLeadingIndents(): String = if (this.startsWith("\t")) {
@@ -86,7 +85,7 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
     }
 
     fun evalLine(line: CharSequence): CharSequence {
-        if(line == "") {
+        if (line == "") {
             // ignore empty line
             return ""
         }
@@ -99,14 +98,14 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                 val sb = StringBuilder()
                 var next = self.peekTo("\n")
                 val currentIndent = line.indentLevel()
-                while(next.indentLevel() == currentIndent + 1) {
+                while (next.indentLevel() == currentIndent + 1) {
                     val res = evalLine(self.readTo("\n"))
-                    if(res != "") {
+                    if (res != "") {
                         sb.append(" ")
                     }
                     sb.append(res)
                     next = self.peekTo("\n")
-                    if(next.isEmpty()) {
+                    if (next.isEmpty()) {
                         break
                     }
                 }
@@ -142,7 +141,8 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                             input.peekTo(param).toString()
                         }
                         ("<<<") -> {
-                            input.readAll().toString()
+                            val res = input.readAll().toString()
+                            res
                         }
                         ("?<<") -> {
                             input.peekAll().toString()
@@ -155,22 +155,40 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                             input = getBuffer(param)
                             ""
                         }
+                        ("<>") -> {
+                            self = getBuffer(param)
+                            ""
+                        }
                         "?" -> {
-                            if(param.startsWith("true")) {
+                            if (param.startsWith("true")) {
                                 evalLine(param.removePrefix("true "))
                             } else {
                                 ""
                             }
                         }
-                        "+", "-", "*", "/", "%" -> {
+                        "=" -> {
+                            val (a, b) = param.split(" ", limit = 2)
+
+                            if (a == b) {
+                                "true"
+                            } else {
+                                "false"
+                            }
+                        }
+                        "<" -> {
+                            val (a, b) = param.split(" ", limit = 2)
+                            if (a.toDouble() < b.toDouble()) {
+                                "true"
+                            } else {
+                                "false"
+                            }
+                        }
+                        "+", "*" -> {
                             val (a, b) = param.split(" ", limit = 2)
 
                             val res = when (macro) {
                                 "+" -> (a.toDouble() + b.toDouble())
-                                "-" -> (a.toDouble() - b.toDouble())
                                 "*" -> (a.toDouble() * b.toDouble())
-                                "/" -> (a.toDouble() / b.toDouble())
-                                "%" -> (a.toDouble() % b.toDouble())
                                 else -> error("What?")
                             }
 
@@ -188,7 +206,7 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
         }
     }
 
-    while(!self.eof) {
+    while (!self.eof) {
         evalLine(self.readTo("\n"))
     }
 
