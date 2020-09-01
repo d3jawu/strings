@@ -1,8 +1,8 @@
 ?
 	?<< _
-	quote >>> false
+	quote >> false
 ?
 	?<< _
 	quote -> null
->>> true
+>> true
 -> out

@@ -121,16 +121,11 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                 // see if macro exists in scope
                 (if (scope.containsKey(macro)) {
                     // eval that macro with parameter as input
-                    val res = eval(LocalBuffer(scope[macro]!!.toString()), LocalBuffer(param)).toString()
-                    return res
+                    return eval(LocalBuffer(scope[macro]!!.toString()), LocalBuffer(param)).toString()
                 } else {
                     // see if macro exists as a built-in command
                     return when (macro) {
                         (">>") -> {
-                            output.prepend(param)
-                            ""
-                        }
-                        (">>>") -> {
                             output.append(param)
                             ""
                         }
@@ -141,8 +136,7 @@ fun eval(initialSelf: Buffer, initialInput: Buffer): Buffer {
                             input.peekTo(param).toString()
                         }
                         ("<<<") -> {
-                            val res = input.readAll().toString()
-                            res
+                            input.readAll().toString()
                         }
                         ("?<<") -> {
                             input.peekAll().toString()

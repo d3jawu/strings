@@ -2,15 +2,15 @@
 ?
 	not
 		<< \s
-	quote >>> false
+	quote >> false
 ?
 	not
 		<< \s
-	quote >>> false
->>> true
+	quote >> false
+>> true
 
 <- messy
 -> out
->>>
+>>
 	not
 		<<< _

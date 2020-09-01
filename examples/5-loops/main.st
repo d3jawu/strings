@@ -1,5 +1,5 @@
 -> counter
->>> 0
+>> 0
 
 while body
 
